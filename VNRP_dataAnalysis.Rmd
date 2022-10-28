@@ -1,32 +1,20 @@
 ---
-title: "VNRP_data"
+title: "NPD analysis of FluxData_NWQM&LTREB"
 author: "Marc Peipoch"
 date: "7/23/2021"
 output: html_document
 ---
 
-Will use old VNRP data from Warm Springs to Turah to help develop the core ideas of the paper regarding nutrient removal efficiency.
-This is a simple calculation of the how Efficiency (calculated as in original Valett and Peipoch 2020 submission) relates to reach length in the UCFR. 
+This script uses data from the rawdata sheet in FluxData_NWQM&LTREB_27Oct2022
+
+After importing the data and grouping events by week to avoid date mismatches among sites we'll do similar analyses to Valett et al first and also add efficiency metrics.
 
 ```{r setup, include=FALSE}
 library(ggplot2); library(dplyr)
-#download the data
-urlfile<-'https://raw.githubusercontent.com/mpstroud/NPDefficiency/main/NPD_full_data.csv'
-NPD_full_data<-read.csv(url(urlfile))
+#upload the data
+NPD_raw_data = read.table("clipboard", header = T, sep="\t")
 
-#general look at NO3eff versus reach length
-ggplot(data= NPD_full_data, aes(L,NO3eff_total,color=season)) +
-  geom_point(size=3) +
-  theme_minimal() 
+NPD_raw_data$event_num <- strftime(NPD_raw_data$date, format = "%V")
+
 ```
 
->We need to compare L-NO3eff incrementally, not simply by reach or the character of the reach dominates the relation.
-
-```{r}
-proba = NPD_full_data %>%
-          filter(season == "3summer") %>%
-          ggplot(., aes(L,NO3eff_total,color=season)) +
-  geom_point(size=3) +
-  theme_minimal() 
-#now...
-```

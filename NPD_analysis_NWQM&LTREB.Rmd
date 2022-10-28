@@ -1,0 +1,37 @@
+---
+title: "NPD analysis of FluxData_NWQM&LTREB"
+author: "Marc Peipoch"
+date: "7/23/2021"
+output: html_document
+---
+
+This script uses data from the rawdata sheet in FluxData_NWQM&LTREB_27Oct2022
+
+After importing the data and grouping events by week to avoid date mismatches among sites we'll do similar analyses to Valett et al first and also add efficiency metrics.
+
+```{r setup, include=FALSE}
+library(ggplot2); library(dplyr) ; library(lubridate)
+#upload the data
+NPD_raw_data = read.table("clipboard", header = T, sep="\t")
+
+NPD_raw_data$date = as.POSIXct(NPD_raw_data$date, format = "%m/%d/%Y") #format as date
+
+    NPD_formated_data = NPD_raw_data %>%
+      group_by(year)  %>%
+      mutate(event_num = paste(year,agg_julian_day,sep="_")) #create an event_num variable that categorize each sampling event
+
+#need to transpose matrix to work this out
+    
+    
+    NPD_formated_data_2 = as.data.frame(matrix())
+for (i in 1:length(NPD_formated_data$event_num)) {
+  
+      NPD_formated_data_2 = NPD_formated_data %>%
+          group_by(year)  %>%
+          mutate(event_num = paste(year,agg_julian_day,sep="_"))
+  
+  
+}
+
+```
+

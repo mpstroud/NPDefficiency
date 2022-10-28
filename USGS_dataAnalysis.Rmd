@@ -1,0 +1,24 @@
+---
+title: "VNRP_data"
+author: "Marc Peipoch"
+date: "7/23/2021"
+output: html_document
+---
+
+xxxxx
+
+```{r setup, include=FALSE}
+library(dataRetrieval); library(dataRetrieval)
+
+vignette("dataRetrieval", package = "dataRetrieval")
+
+
+AZ_data <- whatNWISdata(stateCd = "AZ", 
+                         parameterCd = "00665")
+
+
+
+hist_data = read.table("clipboard", header = T, sep ="\t")
+hist(log10(hist_data[,1]))
+```
+
