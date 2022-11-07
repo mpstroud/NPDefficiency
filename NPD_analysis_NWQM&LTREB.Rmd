@@ -10,7 +10,8 @@ This script uses data from the rawdata sheet in FluxData_NWQM&LTREB_27Oct2022
 After importing the data and grouping events by week to avoid date mismatches among sites we'll do similar analyses to Valett et al first and also add efficiency metrics.
 
 ```{r setup, include=FALSE}
-library(ggplot2); library(dplyr) ; library(lubridate) ; library(tidyverse) ; library(psych)
+library(rlang); library(ggplot2); library(dplyr) ; library(lubridate) ; library(tidyverse) ; library(psych)
+
 #upload the data
 NPD_raw_data = read.table("clipboard", header = T, sep="\t")
 NPD_raw_data = read.csv("FluxData_NWQM&LTREB_27Oct2022.csv")
@@ -26,6 +27,7 @@ NPD_raw_data = NPD_raw_data[1:1949,1:14]
 
 
 #now need to calculate efficiency removal for each reach, first transpose the data and calculate fluxes
+######################WILL NEED TO DO THIS FOR EACH NUTRIENT SPECIES######################################################
 nitrate_horizontal_data = NPD_formated_data %>% 
     mutate(nit_flux = nitrate * flow) %>%
     select(station,year,agg_julian_day,event_num,nit_flux) %>%
@@ -33,36 +35,58 @@ nitrate_horizontal_data = NPD_formated_data %>%
 
 nitrate_horizontal_data = as.data.frame(nitrate_horizontal_data) #to remove the tibble format
 
-#check there is one observation per event number 
+#check there is one observation per sampling event number 
 if (length(unique(nitrate_horizontal_data$event_num)) == nrow(nitrate_horizontal_data)){ 
   print("good to go") } 
 
 #Now calculate efficiency numbers per reach with geometric mean
 #First make sure all fluxes are of numeric class
+
 cols.num <- c("ws","dl","abf","gc","bo","tu")
 nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.character)
 nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.numeric)
 sapply(nitrate_horizontal_data, class)
 
 
-nitrate_eff = nitrate_horizontal_data %>%
-  group_by(event_num) %>%
-            mutate(., effE_nit_r1 = dl - ws / (exp(rowMeans(log(.[,c("dl","ws")]),na.rm=TRUE))),
-                   effE_nit_r2 = abf - dl / (exp(rowMeans(log(.[,c("abf","dl")]),na.rm=TRUE))),
-                   effE_nit_r3 = gc - abf / (exp(rowMeans(log(.[,c("gc","abf")]),na.rm=TRUE))),
-                   effE_nit_r4 = bo - gc / (exp(rowMeans(log(.[,c("bo","gc")]),na.rm=TRUE))),
-                   effE_nit_r5 = tu - bo / (exp(rowMeans(log(.[,c("tu","bo")]),na.rm=TRUE))),
-                   effE_nit_r34 = bo - abf / (exp(rowMeans(log(.[,c("bo","abf")]),na.rm=TRUE))))
+effE_nit_r1 = nitrate_horizontal_data %>%
+  select(dl,ws,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r1 = (dl - ws)/( exp((log(dl) + log(ws))/2) ))
 
-nitrate_eff_2 = nitrate_horizontal_data %>%
-  group_by(event_num) %>%
-            mutate(., geom_R1 = psych::geometric.mean(.[,c("dl","ws")],na.rm=TRUE))
+effE_nit_r2 = nitrate_horizontal_data %>%
+  select(abf,dl,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r2 = (abf - dl)/( exp((log(abf) + log(dl))/2) ))
 
+effE_nit_r3 = nitrate_horizontal_data %>%
+  select(gc,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r3 = (gc - abf)/( exp((log(gc) + log(abf))/2) ))
 
+effE_nit_r4 = nitrate_horizontal_data %>%
+  select(bo,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r4 = (bo - gc)/( exp((log(bo) + log(gc))/2) ))
 
-psych::geometric.mean(nitrate_horizontal_data[1,c("dl","ws")],na.rm=TRUE)
+effE_nit_r5 = nitrate_horizontal_data %>%
+  select(tu,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r5 = (tu - bo)/( exp((log(tu) + log(bo))/2) ))
 
+effE_nit_r34 = nitrate_horizontal_data %>%
+  select(bo,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r34 = (bo - abf)/( exp((log(bo) + log(abf))/2) ))
 
+temp = inner_join(effE_nit_r1,effE_nit_r2, by = "event_num")
+temp = left_join(temp,nitrate_horizontal_data, by = "event_num")
+
+install.packages("viridis")  # Install
+library("viridis") 
+
+ggplot(temp, aes(x=effE_nit_r1, y=effE_nit_r2, color=agg_julian_day)) + 
+  geom_point(size=3) +
+  scale_color_viridis(option = "D")
 
 ```
 
