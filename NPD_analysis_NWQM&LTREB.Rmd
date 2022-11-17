@@ -19,14 +19,14 @@ NPD_raw_data = read.csv("FluxData_NWQM&LTREB_27Oct2022.csv")
 NPD_raw_data$date = as.POSIXct(NPD_raw_data$date, format = "%m/%d/%Y") #format as date
 NPD_raw_data = NPD_raw_data[1:1949,1:14]
   
-  
+#create an event_num variable that categorize each sampling event  
     NPD_formated_data = NPD_raw_data %>%
       group_by(year)  %>%
       mutate(event_num = paste(year,agg_julian_day,sep="_")) 
-    #create an event_num variable that categorize each sampling event
+    
 
 
-#now need to calculate efficiency removal for each reach, first transpose the data and calculate fluxes
+#now need to calculate the removal efficiency for each reach, first transpose the data and calculate fluxes
 ######################WILL NEED TO DO THIS FOR EACH NUTRIENT SPECIES######################################################
 nitrate_horizontal_data = NPD_formated_data %>% 
     mutate(nit_flux = nitrate * flow) %>%
@@ -39,7 +39,10 @@ nitrate_horizontal_data = as.data.frame(nitrate_horizontal_data) #to remove the 
 if (length(unique(nitrate_horizontal_data$event_num)) == nrow(nitrate_horizontal_data)){ 
   print("good to go") } 
 
-#Now calculate efficiency numbers per reach with geometric mean
+#If all looks good, 'nitrate_horizontal_data' has data for solute loads in (g/s) that we can use to calculate E-removal
+
+
+#Now calculate efficiency numbers per reach using geometric means
 #First make sure all fluxes are of numeric class
 
 cols.num <- c("ws","dl","abf","gc","bo","tu")
@@ -47,7 +50,7 @@ nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as
 nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.numeric)
 sapply(nitrate_horizontal_data, class)
 
-
+#calculate  removal efficiency for each reach
 effE_nit_r1 = nitrate_horizontal_data %>%
   select(dl,ws,event_num) %>%
   filter(., complete.cases(.)) %>%
@@ -73,18 +76,87 @@ effE_nit_r5 = nitrate_horizontal_data %>%
   filter(., complete.cases(.)) %>%
               mutate(., effE_nit_r5 = (tu - bo)/( exp((log(tu) + log(bo))/2) ))
 
-effE_nit_r34 = nitrate_horizontal_data %>%
-  select(bo,abf,event_num) %>%
-  filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r34 = (bo - abf)/( exp((log(bo) + log(abf))/2) ))
+#calculate  removal efficiency for longer reach combinations 
 
-temp = inner_join(effE_nit_r1,effE_nit_r2, by = "event_num")
-temp = left_join(temp,nitrate_horizontal_data, by = "event_num")
+effE_nit_r1.1 = nitrate_horizontal_data %>%
+  select(ws,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r1.1 = (abf - ws)/( exp((log(abf) + log(ws))/2) ))
+
+effE_nit_r1.2 = nitrate_horizontal_data %>%
+  select(ws,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r1.2 = (gc - ws)/( exp((log(gc) + log(ws))/2) ))
+
+effE_nit_r1.3 = nitrate_horizontal_data %>%
+  select(ws,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r1.3 = (bo - ws)/( exp((log(bo) + log(ws))/2) ))
+
+effE_nit_r1.4 = nitrate_horizontal_data %>%
+  select(ws,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r1.4 = (tu - ws)/( exp((log(tu) + log(ws))/2) ))
+
+
+
+
+effE_nit_r2.1 = nitrate_horizontal_data %>%
+  select(dl,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r2.1 = (gc - dl)/( exp((log(gc) + log(dl))/2) ))
+
+effE_nit_r2.2 = nitrate_horizontal_data %>%
+  select(dl,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r2.2 = (bo - dl)/( exp((log(bo) + log(dl))/2) ))
+
+effE_nit_r2.3 = nitrate_horizontal_data %>%
+  select(dl,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r2.3 = (tu - dl)/( exp((log(tu) + log(dl))/2) ))
+
+
+
+
+effE_nit_r3.1 = nitrate_horizontal_data %>%
+  select(abf,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r3.1 = (bo - abf)/( exp((log(bo) + log(abf))/2) ))
+
+effE_nit_r3.2 = nitrate_horizontal_data %>%
+  select(abf,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r3.2 = (tu - abf)/( exp((log(tu) + log(abf))/2) ))
+
+
+
+
+effE_nit_r4.1 = nitrate_horizontal_data %>%
+  select(gc,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nit_r4.1 = (tu - gc)/( exp((log(tu) + log(gc))/2) ))
+
+
+
+eff_list = list(effE_nit_r1,effE_nit_r2,effE_nit_r3,effE_nit_r4,effE_nit_r5,
+                effE_nit_r1.1,effE_nit_r1.2,effE_nit_r1.3,effE_nit_r1.4,
+                effE_nit_r2.1,effE_nit_r2.2,effE_nit_r2.3,
+                effE_nit_r3.1,effE_nit_r3.2,
+                effE_nit_r4.1
+                )
+
+merged_eff_data = eff_list %>%
+  reduce(full_join, by ='event_num') 
+#this is a final dataset which keeps efficiency values and solute loads for each event.
+write.csv(merged_eff_data,"merged_efficiency_data.csv")
+
+temp = left_join(merged_eff_data,nitrate_horizontal_data, by = "event_num")
 
 install.packages("viridis")  # Install
 library("viridis") 
 
-ggplot(temp, aes(x=effE_nit_r1, y=effE_nit_r2, color=agg_julian_day)) + 
+ggplot(temp, aes(x=effE_nit_r1, y=effE_nit_r1.1, color=agg_julian_day)) + 
   geom_point(size=3) +
   scale_color_viridis(option = "D")
 
