@@ -14,7 +14,7 @@ width = runif(1000,10,50)
 qin = runif(1000,20,200)
 qout = runif(1000,20,200)
 cin = runif(1000,100,2000)
-cout = runif(1000,100,2000)
+cout = runif(1000,500,1000)
 
 eff_geom = rep(0,1000) ## vector to store results
 for(i in 1:1000){
@@ -25,8 +25,7 @@ for(i in 1:1000){
 }
 
 plot(length,eff_geom)
-
-
+plot(ecdf(eff_geom))
 
 
 

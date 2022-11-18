@@ -151,12 +151,24 @@ merged_eff_data = eff_list %>%
 #this is a final dataset which keeps efficiency values and solute loads for each event.
 write.csv(merged_eff_data,"merged_efficiency_data.csv")
 
+
+
+
+
+
 temp = left_join(merged_eff_data,nitrate_horizontal_data, by = "event_num")
+
+temp_data_plot = temp %>%
+  group_by(year) %>%
+  mutate(effE_nit_r1_byYear = mean(effE_nit_r1,na.rm = T),
+         effE_nit_r2_byYear = mean(effE_nit_r2,na.rm = T) )
+
+
 
 install.packages("viridis")  # Install
 library("viridis") 
 
-ggplot(temp, aes(x=effE_nit_r1, y=effE_nit_r1.1, color=agg_julian_day)) + 
+ggplot(temp_data_plot, aes(x=effE_nit_r1, y=effE_nit_r2_byYear,colour=year)) + 
   geom_point(size=3) +
   scale_color_viridis(option = "D")
 
