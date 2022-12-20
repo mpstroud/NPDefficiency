@@ -10,7 +10,8 @@ This script uses data from the rawdata sheet in FluxData_NWQM&LTREB_27Oct2022
 After importing the data and grouping events by week to avoid date mismatches among sites we'll do similar analyses to Valett et al first and also add efficiency metrics.
 
 ```{r setup, include=FALSE}
-library(rlang); library(ggplot2); library(dplyr) ; library(lubridate) ; library(tidyverse) ; library(psych)
+library(rlang); library(ggplot2); library(dplyr) ; 
+library(lubridate) ; library(tidyverse) ; library(psych); library("viridis") 
 
 #upload the data
 NPD_raw_data = read.table("clipboard", header = T, sep="\t")
@@ -23,154 +24,158 @@ NPD_raw_data = NPD_raw_data[1:1949,1:14]
     NPD_formated_data = NPD_raw_data %>%
       group_by(year)  %>%
       mutate(event_num = paste(year,agg_julian_day,sep="_")) 
-    
+```
 
+```{r}
 
 #now need to calculate the removal efficiency for each reach, first transpose the data and calculate fluxes
 ######################WILL NEED TO DO THIS FOR EACH NUTRIENT SPECIES######################################################
-nitrate_horizontal_data = NPD_formated_data %>% 
-    mutate(nit_flux = nitrate * flow) %>%
-    select(station,year,agg_julian_day,event_num,nit_flux) %>%
-        pivot_wider(names_from = station, values_from = nit_flux,values_fn = list)
+amo_horizontal_data = NPD_formated_data %>% 
+    mutate(amo_flux = amo * flow) %>%
+    select(station,year,agg_julian_day,event_num,amo_flux) %>%
+        pivot_wider(names_from = station, values_from = amo_flux,values_fn = list)
 
-nitrate_horizontal_data = as.data.frame(nitrate_horizontal_data) #to remove the tibble format
+amo_horizontal_data = as.data.frame(amo_horizontal_data) #to remove the tibble format
 
 #check there is one observation per sampling event number 
-if (length(unique(nitrate_horizontal_data$event_num)) == nrow(nitrate_horizontal_data)){ 
+if (length(unique(amo_horizontal_data$event_num)) == nrow(amo_horizontal_data)){ 
   print("good to go") } 
 
-#If all looks good, 'nitrate_horizontal_data' has data for solute loads in (g/s) that we can use to calculate E-removal
+#If all looks good, 'amo_horizontal_data' has data for solute loads in (g/s) that we can use to calculate E-removal
 
 
 #Now calculate efficiency numbers per reach using geometric means
 #First make sure all fluxes are of numeric class
 
 cols.num <- c("ws","dl","abf","gc","bo","tu")
-nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.character)
-nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.numeric)
-sapply(nitrate_horizontal_data, class)
+amo_horizontal_data[cols.num] <- sapply(amo_horizontal_data[cols.num],as.character)
+amo_horizontal_data[cols.num] <- sapply(amo_horizontal_data[cols.num],as.numeric)
+sapply(amo_horizontal_data, class)
 
-#calculate  removal efficiency for each reach
-effE_nit_r1 = nitrate_horizontal_data %>%
+#calculate  net nutrient removal efficiency load for each reach
+effE_amo_r1 = amo_horizontal_data %>%
   select(dl,ws,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r1 = (dl - ws)/( exp((log(dl) + log(ws))/2) ))
+              mutate(., effE_amo_r1 = (dl - ws)/( exp((log(dl) + log(ws))/2) ))
 
-effE_nit_r2 = nitrate_horizontal_data %>%
+effE_amo_r2 = amo_horizontal_data %>%
   select(abf,dl,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r2 = (abf - dl)/( exp((log(abf) + log(dl))/2) ))
+              mutate(., effE_amo_r2 = (abf - dl)/( exp((log(abf) + log(dl))/2) ))
 
-effE_nit_r3 = nitrate_horizontal_data %>%
+effE_amo_r3 = amo_horizontal_data %>%
   select(gc,abf,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r3 = (gc - abf)/( exp((log(gc) + log(abf))/2) ))
+              mutate(., effE_amo_r3 = (gc - abf)/( exp((log(gc) + log(abf))/2) ))
 
-effE_nit_r4 = nitrate_horizontal_data %>%
+effE_amo_r4 = amo_horizontal_data %>%
   select(bo,gc,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r4 = (bo - gc)/( exp((log(bo) + log(gc))/2) ))
+              mutate(., effE_amo_r4 = (bo - gc)/( exp((log(bo) + log(gc))/2) ))
 
-effE_nit_r5 = nitrate_horizontal_data %>%
+effE_amo_r5 = amo_horizontal_data %>%
   select(tu,bo,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r5 = (tu - bo)/( exp((log(tu) + log(bo))/2) ))
+              mutate(., effE_amo_r5 = (tu - bo)/( exp((log(tu) + log(bo))/2) ))
 
 #calculate  removal efficiency for longer reach combinations 
 
-effE_nit_r1.1 = nitrate_horizontal_data %>%
+effE_amo_r1.1 = amo_horizontal_data %>%
   select(ws,abf,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r1.1 = (abf - ws)/( exp((log(abf) + log(ws))/2) ))
+              mutate(., effE_amo_r1.1 = (abf - ws)/( exp((log(abf) + log(ws))/2) ))
 
-effE_nit_r1.2 = nitrate_horizontal_data %>%
+effE_amo_r1.2 = amo_horizontal_data %>%
   select(ws,gc,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r1.2 = (gc - ws)/( exp((log(gc) + log(ws))/2) ))
+              mutate(., effE_amo_r1.2 = (gc - ws)/( exp((log(gc) + log(ws))/2) ))
 
-effE_nit_r1.3 = nitrate_horizontal_data %>%
+effE_amo_r1.3 = amo_horizontal_data %>%
   select(ws,bo,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r1.3 = (bo - ws)/( exp((log(bo) + log(ws))/2) ))
+              mutate(., effE_amo_r1.3 = (bo - ws)/( exp((log(bo) + log(ws))/2) ))
 
-effE_nit_r1.4 = nitrate_horizontal_data %>%
+effE_amo_r1.4 = amo_horizontal_data %>%
   select(ws,tu,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r1.4 = (tu - ws)/( exp((log(tu) + log(ws))/2) ))
+              mutate(., effE_amo_r1.4 = (tu - ws)/( exp((log(tu) + log(ws))/2) ))
 
 
 
 
-effE_nit_r2.1 = nitrate_horizontal_data %>%
+effE_amo_r2.1 = amo_horizontal_data %>%
   select(dl,gc,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r2.1 = (gc - dl)/( exp((log(gc) + log(dl))/2) ))
+              mutate(., effE_amo_r2.1 = (gc - dl)/( exp((log(gc) + log(dl))/2) ))
 
-effE_nit_r2.2 = nitrate_horizontal_data %>%
+effE_amo_r2.2 = amo_horizontal_data %>%
   select(dl,bo,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r2.2 = (bo - dl)/( exp((log(bo) + log(dl))/2) ))
+              mutate(., effE_amo_r2.2 = (bo - dl)/( exp((log(bo) + log(dl))/2) ))
 
-effE_nit_r2.3 = nitrate_horizontal_data %>%
+effE_amo_r2.3 = amo_horizontal_data %>%
   select(dl,tu,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r2.3 = (tu - dl)/( exp((log(tu) + log(dl))/2) ))
+              mutate(., effE_amo_r2.3 = (tu - dl)/( exp((log(tu) + log(dl))/2) ))
 
 
 
 
-effE_nit_r3.1 = nitrate_horizontal_data %>%
+effE_amo_r3.1 = amo_horizontal_data %>%
   select(abf,bo,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r3.1 = (bo - abf)/( exp((log(bo) + log(abf))/2) ))
+              mutate(., effE_amo_r3.1 = (bo - abf)/( exp((log(bo) + log(abf))/2) ))
 
-effE_nit_r3.2 = nitrate_horizontal_data %>%
+effE_amo_r3.2 = amo_horizontal_data %>%
   select(abf,tu,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r3.2 = (tu - abf)/( exp((log(tu) + log(abf))/2) ))
+              mutate(., effE_amo_r3.2 = (tu - abf)/( exp((log(tu) + log(abf))/2) ))
 
 
 
 
-effE_nit_r4.1 = nitrate_horizontal_data %>%
+effE_amo_r4.1 = amo_horizontal_data %>%
   select(gc,tu,event_num) %>%
   filter(., complete.cases(.)) %>%
-              mutate(., effE_nit_r4.1 = (tu - gc)/( exp((log(tu) + log(gc))/2) ))
+              mutate(., effE_amo_r4.1 = (tu - gc)/( exp((log(tu) + log(gc))/2) ))
 
 
 
-eff_list = list(effE_nit_r1,effE_nit_r2,effE_nit_r3,effE_nit_r4,effE_nit_r5,
-                effE_nit_r1.1,effE_nit_r1.2,effE_nit_r1.3,effE_nit_r1.4,
-                effE_nit_r2.1,effE_nit_r2.2,effE_nit_r2.3,
-                effE_nit_r3.1,effE_nit_r3.2,
-                effE_nit_r4.1
+eff_list = list(effE_amo_r1,effE_amo_r2,effE_amo_r3,effE_amo_r4,effE_amo_r5,
+                effE_amo_r1.1,effE_amo_r1.2,effE_amo_r1.3,effE_amo_r1.4,
+                effE_amo_r2.1,effE_amo_r2.2,effE_amo_r2.3,
+                effE_amo_r3.1,effE_amo_r3.2,
+                effE_amo_r4.1
                 )
 
 merged_eff_data = eff_list %>%
   reduce(full_join, by ='event_num') 
 #this is a final dataset which keeps efficiency values and solute loads for each event.
-write.csv(merged_eff_data,"merged_efficiency_data.csv")
+write.csv(merged_eff_data,"merged_NH4efficiency_data.csv")
+
+```
 
 
+```{r}
 
-
-
-
-temp = left_join(merged_eff_data,nitrate_horizontal_data, by = "event_num")
+merged_eff_data = read.csv("merged_SRPefficiency_data.csv")
+temp = inner_join(merged_eff_data,nitrate_horizontal_data, by = "event_num")
 
 temp_data_plot = temp %>%
   group_by(year) %>%
-  mutate(effE_nit_r1_byYear = mean(effE_nit_r1,na.rm = T),
-         effE_nit_r2_byYear = mean(effE_nit_r2,na.rm = T) )
+  mutate(effE_srp_r1_byYear = mean(effE_srp_r1,na.rm = T),
+         effE_srp_r2_byYear = mean(effE_srp_r2,na.rm = T),
+         effE_srp_r3.1_byYear = mean(effE_srp_r3.1,na.rm = T)) %>%
+  distinct(.,.keep_all=T)
 
 
-
-install.packages("viridis")  # Install
-library("viridis") 
-
-ggplot(temp_data_plot, aes(x=effE_nit_r1, y=effE_nit_r2_byYear,colour=year)) + 
+ggplot(temp_data_plot, aes(x=effE_srp_r2_byYear, y=effE_srp_r3.1_byYear,colour=year)) + 
   geom_point(size=3) +
   scale_color_viridis(option = "D")
+
+#showing clear correlation:
+#x=effE_nit_r3_byYear, y=effE_nit_r2_byYear
+#x=effE_nit_r3.1_byYear, y=effE_nit_r2_byYear
 
 ```
 
