@@ -45,6 +45,18 @@ width_horizontal_data = NPD_formated_data %>%
         pivot_wider(names_from = station, values_from = width,values_fn = list)
 width_horizontal_data = as.data.frame(width_horizontal_data) #to remove the tibble format
 
+#transposed depth data
+depth_horizontal_data = NPD_formated_data %>% 
+    select(station,year,agg_julian_day,event_num,depth) %>%
+        pivot_wider(names_from = station, values_from = depth,values_fn = list)
+depth_horizontal_data = as.data.frame(depth_horizontal_data) #to remove the tibble format
+
+#transposed velocity data
+velocity_horizontal_data = NPD_formated_data %>% 
+    select(station,year,agg_julian_day,event_num,velocity) %>%
+        pivot_wider(names_from = station, values_from = velocity,values_fn = list)
+velocity_horizontal_data = as.data.frame(velocity_horizontal_data) #to remove the tibble format
+
 #transposed ammonium flux data
 amo_horizontal_data = NPD_formated_data %>% 
     mutate(amo_flux = amo * flow) %>%
@@ -95,7 +107,7 @@ if (length(unique(amo_horizontal_data$event_num)) == nrow(amo_horizontal_data)){
 
 Using the transposed datasets we need to calculate for each reach combination: 1) the removal efficiency, 2) change in concentration, 3) change in hydraulic load, and 4) effective solute flux.
 
-1) Net removal efficiency 
+1) Net removal efficiency with geomean
 
 ```{r}
 
@@ -437,6 +449,352 @@ merged_eff_data = eff_list %>%
   reduce(full_join, by ='event_num') 
 #this is a final dataset which keeps efficiency values and solute loads for each event.
 write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UM_past&presentNPDs/WorkingData/Final Files/merged_NO3efficiency_data.csv")
+
+
+```
+
+1.1) Net removal efficiency with input
+
+```{r}
+
+#calculate efficiency numbers per reach using geometric means
+#First make sure all fluxes are of numeric class
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+amo_horizontal_data[cols.num] <- sapply(amo_horizontal_data[cols.num],as.character)
+amo_horizontal_data[cols.num] <- sapply(amo_horizontal_data[cols.num],as.numeric)
+sapply(amo_horizontal_data, class)
+
+#calculate  net nutrient removal efficiency load for each reach
+effE_amo_r1 = amo_horizontal_data %>%
+  select(dl,ws,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r1 = (dl - ws)/ws)
+
+effE_amo_r2 = amo_horizontal_data %>%
+  select(abf,dl,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r2 = (abf - dl)/dl)
+
+effE_amo_r3 = amo_horizontal_data %>%
+  select(gc,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r3 = (gc - abf)/abf)
+
+effE_amo_r4 = amo_horizontal_data %>%
+  select(bo,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r4 = (bo - gc)/gc)
+
+effE_amo_r5 = amo_horizontal_data %>%
+  select(tu,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r5 = (tu - bo)/bo)
+
+#calculate  removal efficiency for longer reach combinations 
+
+effE_amo_r1.1 = amo_horizontal_data %>%
+  select(ws,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r1.1 = (abf - ws)/ws)
+
+effE_amo_r1.2 = amo_horizontal_data %>%
+  select(ws,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r1.2 = (gc - ws)/ws)
+
+effE_amo_r1.3 = amo_horizontal_data %>%
+  select(ws,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r1.3 = (bo - ws)/ws)
+
+effE_amo_r1.4 = amo_horizontal_data %>%
+  select(ws,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r1.4 = (tu - ws)/ws)
+
+
+
+
+effE_amo_r2.1 = amo_horizontal_data %>%
+  select(dl,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r2.1 = (gc - dl)/dl)
+
+effE_amo_r2.2 = amo_horizontal_data %>%
+  select(dl,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r2.2 = (bo - dl)/dl)
+
+effE_amo_r2.3 = amo_horizontal_data %>%
+  select(dl,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r2.3 = (tu - dl)/dl)
+
+
+
+
+effE_amo_r3.1 = amo_horizontal_data %>%
+  select(abf,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r3.1 = (bo - abf)/abf)
+
+effE_amo_r3.2 = amo_horizontal_data %>%
+  select(abf,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r3.2 = (tu - abf)/abf)
+
+
+
+
+effE_amo_r4.1 = amo_horizontal_data %>%
+  select(gc,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_amo_r4.1 = (tu - gc)/gc)
+
+
+
+eff_list = list(effE_amo_r1,effE_amo_r2,effE_amo_r3,effE_amo_r4,effE_amo_r5,
+                effE_amo_r1.1,effE_amo_r1.2,effE_amo_r1.3,effE_amo_r1.4,
+                effE_amo_r2.1,effE_amo_r2.2,effE_amo_r2.3,
+                effE_amo_r3.1,effE_amo_r3.2,
+                effE_amo_r4.1
+                )
+
+merged_eff_data = eff_list %>%
+  reduce(full_join, by ='event_num') 
+#this is a final dataset which keeps efficiency values and solute loads for each event.
+write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UCFR_NPD/WorkingData/Final Files/csvs/merged_NH4efficiency_data_byInput.csv")
+
+
+
+
+
+
+
+#calculate efficiency numbers per reach using geometric means
+#First make sure all fluxes are of numeric class
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+srp_horizontal_data[cols.num] <- sapply(srp_horizontal_data[cols.num],as.character)
+srp_horizontal_data[cols.num] <- sapply(srp_horizontal_data[cols.num],as.numeric)
+sapply(srp_horizontal_data, class)
+
+#calculate  net nutrient removal efficiency load for each reach
+effE_srp_r1 = srp_horizontal_data %>%
+  select(dl,ws,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r1 = (dl - ws)/ws)
+
+effE_srp_r2 = srp_horizontal_data %>%
+  select(abf,dl,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r2 = (abf - dl)/dl)
+
+effE_srp_r3 = srp_horizontal_data %>%
+  select(gc,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r3 = (gc - abf)/abf)
+
+effE_srp_r4 = srp_horizontal_data %>%
+  select(bo,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r4 = (bo - gc)/gc)
+
+effE_srp_r5 = srp_horizontal_data %>%
+  select(tu,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r5 = (tu - bo)/bo)
+
+#calculate  removal efficiency for longer reach combinations 
+
+effE_srp_r1.1 = srp_horizontal_data %>%
+  select(ws,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r1.1 = (abf - ws)/ws)
+
+effE_srp_r1.2 = srp_horizontal_data %>%
+  select(ws,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r1.2 = (gc - ws)/ws)
+
+effE_srp_r1.3 = srp_horizontal_data %>%
+  select(ws,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r1.3 = (bo - ws)/ws)
+
+effE_srp_r1.4 = srp_horizontal_data %>%
+  select(ws,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r1.4 = (tu - ws)/ws)
+
+
+
+
+effE_srp_r2.1 = srp_horizontal_data %>%
+  select(dl,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r2.1 = (gc - dl)/dl)
+
+effE_srp_r2.2 = srp_horizontal_data %>%
+  select(dl,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r2.2 = (bo - dl)/dl)
+
+effE_srp_r2.3 = srp_horizontal_data %>%
+  select(dl,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r2.3 = (tu - dl)/dl)
+
+
+
+
+effE_srp_r3.1 = srp_horizontal_data %>%
+  select(abf,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r3.1 = (bo - abf)/abf)
+
+effE_srp_r3.2 = srp_horizontal_data %>%
+  select(abf,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r3.2 = (tu - abf)/abf)
+
+
+
+
+effE_srp_r4.1 = srp_horizontal_data %>%
+  select(gc,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_srp_r4.1 = (tu - gc)/gc)
+
+
+
+eff_list = list(effE_srp_r1,effE_srp_r2,effE_srp_r3,effE_srp_r4,effE_srp_r5,
+                effE_srp_r1.1,effE_srp_r1.2,effE_srp_r1.3,effE_srp_r1.4,
+                effE_srp_r2.1,effE_srp_r2.2,effE_srp_r2.3,
+                effE_srp_r3.1,effE_srp_r3.2,
+                effE_srp_r4.1
+                )
+
+merged_eff_data = eff_list %>%
+  reduce(full_join, by ='event_num') 
+#this is a final dataset which keeps efficiency values and solute loads for each event.
+write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UCFR_NPD/WorkingData/Final Files/csvs/merged_SRPefficiency_data_byInput.csv")
+
+
+
+
+
+
+
+#calculate efficiency numbers per reach using geometric means
+#First make sure all fluxes are of numeric class
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.character)
+nitrate_horizontal_data[cols.num] <- sapply(nitrate_horizontal_data[cols.num],as.numeric)
+sapply(nitrate_horizontal_data, class)
+
+#calculate  net nutrient removal efficiency load for each reach
+effE_nitrate_r1 = nitrate_horizontal_data %>%
+  select(dl,ws,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r1 = (dl - ws)/ws)
+
+effE_nitrate_r2 = nitrate_horizontal_data %>%
+  select(abf,dl,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r2 = (abf - dl)/dl)
+
+effE_nitrate_r3 = nitrate_horizontal_data %>%
+  select(gc,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r3 = (gc - abf)/abf)
+
+effE_nitrate_r4 = nitrate_horizontal_data %>%
+  select(bo,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r4 = (bo - gc)/gc)
+
+effE_nitrate_r5 = nitrate_horizontal_data %>%
+  select(tu,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r5 = (tu - bo)/bo)
+
+#calculate  removal efficiency for longer reach combinations 
+
+effE_nitrate_r1.1 = nitrate_horizontal_data %>%
+  select(ws,abf,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r1.1 = (abf - ws)/ws)
+
+effE_nitrate_r1.2 = nitrate_horizontal_data %>%
+  select(ws,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r1.2 = (gc - ws)/ws)
+
+effE_nitrate_r1.3 = nitrate_horizontal_data %>%
+  select(ws,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r1.3 = (bo - ws)/ws)
+
+effE_nitrate_r1.4 = nitrate_horizontal_data %>%
+  select(ws,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r1.4 = (tu - ws)/ws)
+
+
+
+
+effE_nitrate_r2.1 = nitrate_horizontal_data %>%
+  select(dl,gc,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r2.1 = (gc - dl)/dl)
+
+effE_nitrate_r2.2 = nitrate_horizontal_data %>%
+  select(dl,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r2.2 = (bo - dl)/dl)
+
+effE_nitrate_r2.3 = nitrate_horizontal_data %>%
+  select(dl,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r2.3 = (tu - dl)/dl)
+
+
+
+
+effE_nitrate_r3.1 = nitrate_horizontal_data %>%
+  select(abf,bo,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r3.1 = (bo - abf)/abf)
+
+effE_nitrate_r3.2 = nitrate_horizontal_data %>%
+  select(abf,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r3.2 = (tu - abf)/abf)
+
+
+
+
+effE_nitrate_r4.1 = nitrate_horizontal_data %>%
+  select(gc,tu,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., effE_nitrate_r4.1 = (tu - gc)/gc)
+
+
+
+eff_list = list(effE_nitrate_r1,effE_nitrate_r2,effE_nitrate_r3,effE_nitrate_r4,effE_nitrate_r5,
+                effE_nitrate_r1.1,effE_nitrate_r1.2,effE_nitrate_r1.3,effE_nitrate_r1.4,
+                effE_nitrate_r2.1,effE_nitrate_r2.2,effE_nitrate_r2.3,
+                effE_nitrate_r3.1,effE_nitrate_r3.2,
+                effE_nitrate_r4.1
+                )
+
+merged_eff_data = eff_list %>%
+  reduce(full_join, by ='event_num') 
+#this is a final dataset which keeps efficiency values and solute loads for each event.
+write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UCFR_NPD/WorkingData/Final Files/csvs/merged_NO3efficiency_data_byInput.csv")
 
 
 ```
@@ -913,6 +1271,255 @@ write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UM_past&presentNPDs/Wor
 
 ```
 
+3.1) Change in hydraulic load (with depth/residence time)
+
+```{r}
+#calculate change in flow as (deltaHL) per reach 
+#First make sure all flow values are of numeric class
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+depth_horizontal_data[cols.num] <- sapply(depth_horizontal_data[cols.num],as.character)
+depth_horizontal_data[cols.num] <- sapply(depth_horizontal_data[cols.num],as.numeric)
+sapply(depth_horizontal_data, class)
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+velocity_horizontal_data[cols.num] <- sapply(velocity_horizontal_data[cols.num],as.character)
+velocity_horizontal_data[cols.num] <- sapply(velocity_horizontal_data[cols.num],as.numeric)
+sapply(velocity_horizontal_data, class)
+
+hydro_horizontal_data = inner_join(depth_horizontal_data,velocity_horizontal_data, by = "event_num")
+#.x correspond to depths and .y to velocities
+
+#calculate  deltaHL for each reach
+deltaHL_r1 = hydro_horizontal_data %>%
+  select(dl.x,ws.x,dl.y,ws.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1 = (dl.x - ws.x)/(44900/((dl.y + ws.y)/2) ))
+
+deltaHL_r2 = hydro_horizontal_data %>%
+  select(abf.x,dl.x,abf.y,dl.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2 = (abf.x - dl.x)/(19920/((abf.y + dl.y)/2) ))
+
+deltaHL_r3 = hydro_horizontal_data %>%
+  select(gc.x,abf.x,gc.y,abf.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r3 = (gc.x - abf.x)/(24400/((gc.y + abf.y)/2) ))
+
+deltaHL_r4 = hydro_horizontal_data %>%
+  select(bo.x,gc.x,bo.y,gc.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r4 = (bo.x - gc.x)/(78600/((bo.y + gc.y)/2) ))
+
+deltaHL_r5 = hydro_horizontal_data %>%
+  select(tu.x,bo.x,tu.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r5 = (tu.x - bo.x)/(29200/((tu.y + bo.y)/2) ))
+
+#calculate  deltaHL for longer reach combinations 
+
+deltaHL_r1.1 = hydro_horizontal_data %>%
+  select(ws.x,abf.x,ws.y,abf.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.1 = (abf.x - ws.x)/(64820/((abf.y + ws.y)/2) ))
+
+deltaHL_r1.2 = hydro_horizontal_data %>%
+  select(ws.x,gc.x,ws.y,gc.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.2 = (gc.x - ws.x)/(89220/((gc.y + ws.y)/2) ))
+
+deltaHL_r1.3 = hydro_horizontal_data %>%
+  select(ws.x,bo.x,ws.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.3 = (bo.x - ws.x)/(167800/((bo.y + ws.y)/2) ))
+
+deltaHL_r1.4 = hydro_horizontal_data %>%
+  select(ws.x,tu.x,ws.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.4 = (tu.x - ws.x)/(197000/((tu.y + ws.y)/2) ))
+
+
+
+
+deltaHL_r2.1 = hydro_horizontal_data %>%
+  select(dl.x,gc.x,dl.y,gc.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2.1 = (gc.x - dl.x)/(44320/((gc.y + dl.y)/2) ))
+
+deltaHL_r2.2 = hydro_horizontal_data %>%
+  select(dl.x,bo.x,dl.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2.2 = (bo.x - dl.x)/(122920/((bo.y + dl.y)/2) ))
+
+deltaHL_r2.3 = hydro_horizontal_data %>%
+  select(dl.x,tu.x,dl.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2.3 = (tu.x - dl.x)/(152100/((tu.y + dl.y)/2) ))
+
+
+
+
+deltaHL_r3.1 = hydro_horizontal_data %>%
+  select(abf.x,bo.x,abf.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r3.1 = (bo.x - abf.x)/(103000/((bo.y + abf.y)/2) ))
+
+deltaHL_r3.2 = hydro_horizontal_data %>%
+  select(abf.x,tu.x,abf.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r3.2 = (tu.x - abf.x)/(132200/((tu.y + abf.y)/2) ))
+
+
+
+
+deltaHL_r4.1 = hydro_horizontal_data %>%
+  select(gc.x,tu.x,gc.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r4.1 = (tu.x - gc.x)/(107800/((tu.y + gc.y)/2) ))
+
+
+
+eff_list = list(deltaHL_r1,deltaHL_r2,deltaHL_r3,deltaHL_r4,deltaHL_r5,
+                deltaHL_r1.1,deltaHL_r1.2,deltaHL_r1.3,deltaHL_r1.4,
+                deltaHL_r2.1,deltaHL_r2.2,deltaHL_r2.3,
+                deltaHL_r3.1,deltaHL_r3.2,
+                deltaHL_r4.1
+                )
+
+merged_eff_data = eff_list %>%
+  reduce(full_join, by ='event_num') 
+#this is a final dataset which keeps deltaHL values and flow values for each event.
+write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UM_past&presentNPDs/WorkingData/Final Files/merged_deltaHL_bydepth&time_data.csv")
+
+
+
+```
+
+3.2) Mean hydraulic load (with depth/residence time)
+
+```{r}
+#calculate change in flow as (deltaHL) per reach 
+#First make sure all flow values are of numeric class
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+depth_horizontal_data[cols.num] <- sapply(depth_horizontal_data[cols.num],as.character)
+depth_horizontal_data[cols.num] <- sapply(depth_horizontal_data[cols.num],as.numeric)
+sapply(depth_horizontal_data, class)
+
+cols.num <- c("ws","dl","abf","gc","bo","tu")
+velocity_horizontal_data[cols.num] <- sapply(velocity_horizontal_data[cols.num],as.character)
+velocity_horizontal_data[cols.num] <- sapply(velocity_horizontal_data[cols.num],as.numeric)
+sapply(velocity_horizontal_data, class)
+
+hydro_horizontal_data = inner_join(depth_horizontal_data,velocity_horizontal_data, by = "event_num")
+#.x correspond to depths and .y to velocities
+
+#calculate  deltaHL for each reach
+deltaHL_r1 = hydro_horizontal_data %>%
+  select(dl.x,ws.x,dl.y,ws.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1 = ((dl.x + ws.x)/2)/(44900/((dl.y + ws.y)/2) ))
+
+deltaHL_r2 = hydro_horizontal_data %>%
+  select(abf.x,dl.x,abf.y,dl.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2 = ((abf.x + dl.x)/2)/(19920/((abf.y + dl.y)/2) ))
+
+deltaHL_r3 = hydro_horizontal_data %>%
+  select(gc.x,abf.x,gc.y,abf.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r3 = ((gc.x + abf.x)/2)/(24400/((gc.y + abf.y)/2) ))
+
+deltaHL_r4 = hydro_horizontal_data %>%
+  select(bo.x,gc.x,bo.y,gc.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r4 = ((bo.x + gc.x)/2)/(78600/((bo.y + gc.y)/2) ))
+
+deltaHL_r5 = hydro_horizontal_data %>%
+  select(tu.x,bo.x,tu.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r5 = ((tu.x + bo.x)/2)/(29200/((tu.y + bo.y)/2) ))
+
+#calculate  deltaHL for longer reach combinations 
+
+deltaHL_r1.1 = hydro_horizontal_data %>%
+  select(ws.x,abf.x,ws.y,abf.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.1 = ((abf.x + ws.x)/2)/(64820/((abf.y + ws.y)/2) ))
+
+deltaHL_r1.2 = hydro_horizontal_data %>%
+  select(ws.x,gc.x,ws.y,gc.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.2 = ((gc.x + ws.x)/2)/(89220/((gc.y + ws.y)/2) ))
+
+deltaHL_r1.3 = hydro_horizontal_data %>%
+  select(ws.x,bo.x,ws.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.3 = ((bo.x + ws.x)/2)/(167800/((bo.y + ws.y)/2) ))
+
+deltaHL_r1.4 = hydro_horizontal_data %>%
+  select(ws.x,tu.x,ws.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r1.4 = ((tu.x + ws.x)/2)/(197000/((tu.y + ws.y)/2) ))
+
+
+
+
+deltaHL_r2.1 = hydro_horizontal_data %>%
+  select(dl.x,gc.x,dl.y,gc.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2.1 = ((gc.x + dl.x)/2)/(44320/((gc.y + dl.y)/2) ))
+
+deltaHL_r2.2 = hydro_horizontal_data %>%
+  select(dl.x,bo.x,dl.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2.2 = ((bo.x + dl.x)/2)/(122920/((bo.y + dl.y)/2) ))
+
+deltaHL_r2.3 = hydro_horizontal_data %>%
+  select(dl.x,tu.x,dl.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r2.3 = ((tu.x + dl.x)/2)/(152100/((tu.y + dl.y)/2) ))
+
+
+
+
+deltaHL_r3.1 = hydro_horizontal_data %>%
+  select(abf.x,bo.x,abf.y,bo.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r3.1 = ((bo.x + abf.x)/2)/(103000/((bo.y + abf.y)/2) ))
+
+deltaHL_r3.2 = hydro_horizontal_data %>%
+  select(abf.x,tu.x,abf.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r3.2 = ((tu.x + abf.x)/2)/(132200/((tu.y + abf.y)/2) ))
+
+
+
+
+deltaHL_r4.1 = hydro_horizontal_data %>%
+  select(gc.x,tu.x,gc.y,tu.y,event_num) %>%
+  filter(., complete.cases(.)) %>%
+              mutate(., deltaHL_r4.1 = ((tu.x + gc.x)/2)/(107800/((tu.y + gc.y)/2) ))
+
+
+
+eff_list = list(deltaHL_r1,deltaHL_r2,deltaHL_r3,deltaHL_r4,deltaHL_r5,
+                deltaHL_r1.1,deltaHL_r1.2,deltaHL_r1.3,deltaHL_r1.4,
+                deltaHL_r2.1,deltaHL_r2.2,deltaHL_r2.3,
+                deltaHL_r3.1,deltaHL_r3.2,
+                deltaHL_r4.1
+                )
+
+merged_eff_data = eff_list %>%
+  reduce(full_join, by ='event_num') 
+#this is a final dataset which keeps deltaHL values and flow values for each event.
+write.csv(merged_eff_data,"E:/My Drive/manuscripts/LTREB_UCFR_NPD/WorkingData/Final Files/csvs/merged_HL_bydepth&time_data.csv")
+
+
+
+```
+
+
 4) Effective solute flux.
 
 ```{r}
@@ -1301,7 +1908,7 @@ ggplot(temp_data_plot, aes(x=deltaC_byyear_season, y=effFlux_byyear_season,colou
   facet_grid(~ season)
 
 #Hydraulic load versus efficient flux
-data_A = read.csv("E:/My Drive/manuscripts/LTREB_UM_past&presentNPDs/WorkingData/Final Files/merged_effFluxSRP_data.csv")
+data_A = read.csv("E:/My Drive/manuscripts/LTREB_UM_past&presentNPDs/WorkingData/Final Files/merged_NO3efficiency_data.csv")
 data_B = read.csv("E:/My Drive/manuscripts/LTREB_UM_past&presentNPDs/WorkingData/Final Files/merged_deltaHL_data.csv")
 temp = inner_join(data_A,data_B, by = "event_num")
 
@@ -1312,12 +1919,13 @@ temp$year_season = paste(temp$year, temp$season, sep="_")
 #with averaging by year
 temp_data_plot = temp %>%
   group_by(year_season) %>%
-  mutate(effFlux_byyear_season = mean(effFlux_r2, na.rm = T),
-         deltaHL_byyear_season = mean(deltaHL_r2,na.rm = T)) %>%
+  mutate(effFlux_byyear_season = mean(effE_nitrate_r1.4, na.rm = T),
+         deltaHL_byyear_season = mean(effE_nitrate_r1,na.rm = T)) %>%
   distinct(.,.keep_all=T)
 
-ggplot(temp_data_plot, aes(x=deltaHL_byyear_season, y=effFlux_byyear_season,colour=rest_treat)) + 
-  geom_point(size=3) +
+ggplot(temp_data_plot, aes(x=deltaHL_byyear_season, y=effFlux_byyear_season,colour=year)) + 
+  geom_point(size=4) +
+  scale_color_viridis() + 
   facet_grid(~ season)
 
 
@@ -1325,6 +1933,28 @@ ggplot(temp_data_plot, aes(x=deltaHL_byyear_season, y=effFlux_byyear_season,colo
 #showing clear correlation:
 #x=effE_nit_r3_byYear, y=effE_nit_r2_byYear
 #x=effE_nit_r3.1_byYear, y=effE_nit_r2_byYear
+
+
+
+#LTREB renewal plot
+
+LTREB_plot_data = read.table("clipboard", header = T, sep="\t")
+
+
+ggplot(LTREB_plot_data, aes(x=HL_r1, y=E_r1,colour=as.factor(year))) + 
+  geom_point(size=4) +
+  scale_color_viridis(discrete=T) + theme_bw()
+
+
+ggplot(LTREB_plot_data, aes(x = HL_r1, y = effE_srp_r1, color = as.factor(phase))) +
+  geom_point() +
+  geom_smooth(method = "lm", fill = NA) +
+  scale_color_viridis(discrete = T) + theme_bw()
+
+
+ggplot(LTREB_plot_data, aes(x=phase, y=HL_r1, color=phase)) +
+  geom_boxplot() +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))
 
 ```
 
